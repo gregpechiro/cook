@@ -11,28 +11,25 @@ var count int
 
 func main() {
 
-	http.HandleFunc("/get", GetFlash)
-	http.HandleFunc("/set", SetFlash)
-
-	http.HandleFunc("/getcook", GetCook)
-	http.HandleFunc("/setcook", SetCook)
-	http.HandleFunc("/delcook", DelCook)
+	http.HandleFunc("/getflash", GetFlash)
+	http.HandleFunc("/setflash", SetFlash)
+	http.HandleFunc("/getall", GetAllCook)
+	http.HandleFunc("/get", GetCook)
+	http.HandleFunc("/set", SetCook)
+	http.HandleFunc("/del", DelCook)
 
 	http.ListenAndServe(":8080", nil)
 
 }
 
 func SetFlash(w http.ResponseWriter, r *http.Request) {
-	//cook.SetFlash(w, "alertSuccess", r.FormValue("msg"))
-	//http.Redirect(w, r, "/get", 303)
-	//return
 	switch r.FormValue("kind") {
 	case "success":
-		cook.SetSuccessRedirect(w, r, "/get", r.FormValue("msg"))
+		cook.SetSuccessRedirect(w, r, "/getflash", r.FormValue("msg"))
 	case "error":
-		cook.SetErrorRedirect(w, r, "/get", r.FormValue("msg"))
+		cook.SetErrorRedirect(w, r, "/getflash", r.FormValue("msg"))
 	default:
-		cook.SetMsgRedirect(w, r, "/get", r.FormValue("msg"))
+		cook.SetMsgRedirect(w, r, "/getflash", r.FormValue("msg"))
 	}
 	return
 }
@@ -43,20 +40,31 @@ func GetFlash(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Message in cookie: %s, %s", msgk, msgv)
 }
 
-func GetCook(w http.ResponseWriter, r *http.Request) {
+func GetAllCook(w http.ResponseWriter, r *http.Request) {
 	c := cook.GetAllCookies(r)
 	fmt.Fprintf(w, "Cookies:    %v", c)
 }
 
+func GetCook(w http.ResponseWriter, r *http.Request) {
+	c := r.FormValue("cook")
+	var val string
+	if c == "" {
+		val = ""
+	} else {
+		val = cook.GetCookie(r, r.FormValue("cook"))
+	}
+	fmt.Fprintf(w, "Cookie: %v", val)
+}
+
 func DelCook(w http.ResponseWriter, r *http.Request) {
 	cook.DeleteCookie(w, r, r.FormValue("cook"))
-	http.Redirect(w, r, "/getcook", 303)
+	http.Redirect(w, r, "/getall", 303)
 }
 
 func SetCook(w http.ResponseWriter, r *http.Request) {
 	count++
-	key := fmt.Sprintf("KEY_%d", count)
-	val := fmt.Sprintf("VALUE_%d", count)
+	key := fmt.Sprintf("KEY %d", count)
+	val := fmt.Sprintf("VALUE %d", count)
 	cook.PutCookie(w, key, val)
 	fmt.Fprintf(w, "Set Cookie: %s, %s", key, val)
 	return
