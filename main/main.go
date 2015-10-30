@@ -110,6 +110,10 @@ func SecurePut(w http.ResponseWriter, r *http.Request) {
 }
 
 func SecureAll(w http.ResponseWriter, r *http.Request) {
+	if !sess.Authorized(w, r) {
+		fmt.Fprintf(w, "You are not autorized. Please visit the login page")
+		return
+	}
 	c := sess.GetAll(r)
 	fmt.Fprintf(w, "Session Cookies:    %v", c)
 }
