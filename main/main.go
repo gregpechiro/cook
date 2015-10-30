@@ -4,45 +4,31 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gregpechiro/cook"
+	"github.com/gregpechiro/cookieManager/cook"
+	"github.com/gregpechiro/cookieManager/flash"
+	"github.com/gregpechiro/cookieManager/sess"
 )
 
 var count int
 
 func main() {
 
+	http.HandleFunc("/get", GetCook)
+	http.HandleFunc("/put", PutCook)
+	http.HandleFunc("/del", DelCook)
+	http.HandleFunc("/getall", GetAllCook)
+
 	http.HandleFunc("/getflash", GetFlash)
 	http.HandleFunc("/setflash", SetFlash)
-	http.HandleFunc("/getall", GetAllCook)
-	http.HandleFunc("/get", GetCook)
-	http.HandleFunc("/set", SetCook)
-	http.HandleFunc("/del", DelCook)
+
+	http.HandleFunc("/login", Login)
+	http.HandleFunc("/secure", Secure)
+	http.HandleFunc("/secure/put", SecurePut)
+	http.HandleFunc("/secure/all", SecureAll)
+	http.HandleFunc("/logout", Logout)
 
 	http.ListenAndServe(":8080", nil)
 
-}
-
-func SetFlash(w http.ResponseWriter, r *http.Request) {
-	switch r.FormValue("kind") {
-	case "success":
-		cook.SetSuccessRedirect(w, r, "/getflash", r.FormValue("msg"))
-	case "error":
-		cook.SetErrorRedirect(w, r, "/getflash", r.FormValue("msg"))
-	default:
-		cook.SetMsgRedirect(w, r, "/getflash", r.FormValue("msg"))
-	}
-	return
-}
-
-func GetFlash(w http.ResponseWriter, r *http.Request) {
-	msgk, msgv := cook.GetFlash(w, r)
-
-	fmt.Fprintf(w, "Message in cookie: %s, %s", msgk, msgv)
-}
-
-func GetAllCook(w http.ResponseWriter, r *http.Request) {
-	c := cook.GetAllCookies(r)
-	fmt.Fprintf(w, "Cookies:    %v", c)
 }
 
 func GetCook(w http.ResponseWriter, r *http.Request) {
@@ -51,21 +37,79 @@ func GetCook(w http.ResponseWriter, r *http.Request) {
 	if c == "" {
 		val = ""
 	} else {
-		val = cook.GetCookie(r, r.FormValue("cook"))
+		val = cook.Get(r, r.FormValue("cook"))
 	}
 	fmt.Fprintf(w, "Cookie: %v", val)
 }
 
-func DelCook(w http.ResponseWriter, r *http.Request) {
-	cook.DeleteCookie(w, r, r.FormValue("cook"))
-	http.Redirect(w, r, "/getall", 303)
-}
-
-func SetCook(w http.ResponseWriter, r *http.Request) {
+func PutCook(w http.ResponseWriter, r *http.Request) {
 	count++
 	key := fmt.Sprintf("KEY %d", count)
 	val := fmt.Sprintf("VALUE %d", count)
-	cook.PutCookie(w, key, val)
+	cook.Put(w, key, val)
 	fmt.Fprintf(w, "Set Cookie: %s, %s", key, val)
 	return
+}
+
+func DelCook(w http.ResponseWriter, r *http.Request) {
+	cook.Delete(w, r, r.FormValue("cook"))
+	http.Redirect(w, r, "/getall", 303)
+}
+
+func GetAllCook(w http.ResponseWriter, r *http.Request) {
+	c := cook.GetAll(r)
+	fmt.Fprintf(w, "Cookies:    %v", c)
+}
+
+func GetFlash(w http.ResponseWriter, r *http.Request) {
+	msgk, msgv := flash.GetFlash(w, r)
+	fmt.Fprintf(w, "Message in cookie: %s, %s", msgk, msgv)
+}
+
+func SetFlash(w http.ResponseWriter, r *http.Request) {
+	switch r.FormValue("kind") {
+	case "success":
+		flash.SetSuccessRedirect(w, r, "/getflash", r.FormValue("msg"))
+	case "error":
+		flash.SetErrorRedirect(w, r, "/getflash", r.FormValue("msg"))
+	default:
+		flash.SetMsgRedirect(w, r, "/getflash", r.FormValue("msg"))
+	}
+	return
+}
+
+func Login(w http.ResponseWriter, r *http.Request) {
+	sess.Login(w, r)
+	fmt.Fprintf(w, "You are now logged in")
+}
+
+func Logout(w http.ResponseWriter, r *http.Request) {
+	sess.Logout(w, r)
+	fmt.Fprintf(w, "You are now logged out")
+}
+
+func Secure(w http.ResponseWriter, r *http.Request) {
+	if !sess.Authorized(w, r) {
+		fmt.Fprintf(w, "You are not autorized. Please visit the login page")
+		return
+	}
+	fmt.Fprintf(w, "You are now viewing secure data")
+}
+
+func SecurePut(w http.ResponseWriter, r *http.Request) {
+	if !sess.Authorized(w, r) {
+		fmt.Fprintf(w, "You are not autorized. Please visit the login page")
+		return
+	}
+	count++
+	key := fmt.Sprintf("KEY %d", count)
+	val := fmt.Sprintf("VALUE %d", count)
+	sess.Put(w, r, key, val)
+	fmt.Fprintf(w, "Set Cookie: %s, %s", key, val)
+	return
+}
+
+func SecureAll(w http.ResponseWriter, r *http.Request) {
+	c := sess.GetAll(r)
+	fmt.Fprintf(w, "Session Cookies:    %v", c)
 }
