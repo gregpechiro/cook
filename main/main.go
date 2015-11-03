@@ -22,10 +22,15 @@ func main() {
 	http.HandleFunc("/setflash", SetFlash)
 
 	http.HandleFunc("/login", Login)
+	http.HandleFunc("/logout", Logout)
+
 	http.HandleFunc("/secure", Secure)
 	http.HandleFunc("/secure/put", SecurePut)
 	http.HandleFunc("/secure/all", SecureAll)
-	http.HandleFunc("/logout", Logout)
+
+	http.HandleFunc("/admin", Admin)
+	http.HandleFunc("/admin/put", AdminPut)
+	http.HandleFunc("/admin/all", AdminAll)
 
 	http.ListenAndServe(":8080", nil)
 
@@ -79,7 +84,11 @@ func SetFlash(w http.ResponseWriter, r *http.Request) {
 }
 
 func Login(w http.ResponseWriter, r *http.Request) {
-	sess.Login(w, r)
+	role := r.FormValue("role")
+	if role == "" {
+		role = "user"
+	}
+	sess.Login(w, r, role)
 	fmt.Fprintf(w, "You are now logged in")
 }
 
@@ -89,7 +98,8 @@ func Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 func Secure(w http.ResponseWriter, r *http.Request) {
-	if !sess.Authorized(w, r) {
+	_, ok := sess.Authorized(w, r)
+	if !ok {
 		fmt.Fprintf(w, "You are not autorized. Please visit the login page")
 		return
 	}
@@ -97,7 +107,8 @@ func Secure(w http.ResponseWriter, r *http.Request) {
 }
 
 func SecurePut(w http.ResponseWriter, r *http.Request) {
-	if !sess.Authorized(w, r) {
+	_, ok := sess.Authorized(w, r)
+	if !ok {
 		fmt.Fprintf(w, "You are not autorized. Please visit the login page")
 		return
 	}
@@ -110,8 +121,43 @@ func SecurePut(w http.ResponseWriter, r *http.Request) {
 }
 
 func SecureAll(w http.ResponseWriter, r *http.Request) {
-	if !sess.Authorized(w, r) {
+	_, ok := sess.Authorized(w, r)
+	if !ok {
 		fmt.Fprintf(w, "You are not autorized. Please visit the login page")
+		return
+	}
+	c := sess.GetAll(r)
+	fmt.Fprintf(w, "Session Cookies:    %v", c)
+}
+
+func Admin(w http.ResponseWriter, r *http.Request) {
+	role, ok := sess.Authorized(w, r)
+	if !ok || role != "admin" {
+		fmt.Printf("ROLE: %q0\n", role)
+		fmt.Fprintf(w, "You are not autorized as admin. Please visit the login page")
+		return
+	}
+	fmt.Fprintf(w, "You are now viewing admin data")
+}
+
+func AdminPut(w http.ResponseWriter, r *http.Request) {
+	role, ok := sess.Authorized(w, r)
+	if !ok || role != "admin" {
+		fmt.Fprintf(w, "You are not autorized as admin. Please visit the login page")
+		return
+	}
+	count++
+	key := fmt.Sprintf("KEY %d", count)
+	val := fmt.Sprintf("VALUE %d", count)
+	sess.Put(w, r, key, val)
+	fmt.Fprintf(w, "Set Cookie: %s, %s", key, val)
+	return
+}
+
+func AdminAll(w http.ResponseWriter, r *http.Request) {
+	role, ok := sess.Authorized(w, r)
+	if !ok || role != "admin" {
+		fmt.Fprintf(w, "You are not autorized as admin. Please visit the login page")
 		return
 	}
 	c := sess.GetAll(r)

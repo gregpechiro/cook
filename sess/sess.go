@@ -33,12 +33,18 @@ func SessDur() time.Time {
 	return time.Now().Add(SESSDUR)
 }
 
-func Login(w http.ResponseWriter, r *http.Request) {
+func Login(w http.ResponseWriter, r *http.Request, role string) {
+	if role == "" {
+		return
+	}
 	m := toMap(cook.Get(r, "SESS-D"))
 	if m == nil {
 		m = make(map[string]string)
 	}
-	m["AUTH"] = "true"
+	if _, ok := m["ROLE"]; ok {
+		return
+	}
+	m["ROLE"] = role
 	cookie := cook.FreshCookie("SESS-D", toString(m), SessDur())
 	cook.PutCookie(w, &cookie)
 }
@@ -58,12 +64,12 @@ func GetAll(r *http.Request) map[string]string {
 	return toMap(cook.Get(r, "SESS-D"))
 }
 
-func Authorized(w http.ResponseWriter, r *http.Request) bool {
+func Authorized(w http.ResponseWriter, r *http.Request) (string, bool) {
 	m := toMap(cook.Get(r, "SESS-D"))
-	if m == nil || m["AUTH"] != "true" {
-		return false
+	if m == nil || m["ROLE"] == "" {
+		return "", false
 	}
 	cookie := cook.FreshCookie("SESS-D", toString(m), SessDur())
 	cook.PutCookie(w, &cookie)
-	return true
+	return m["ROLE"], true
 }
