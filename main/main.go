@@ -180,18 +180,16 @@ func AdminAll(w http.ResponseWriter, r *http.Request) {
 
 func Csrf(w http.ResponseWriter, r *http.Request) {
 	c := csrf.SetCSRF(w)
-	link := fmt.Sprintf("<a href=\"/csrf-test?csrf=%s\">Click to test</a>", c)
+	link := fmt.Sprintf("<a href=\"/csrf-test?_csrf=%s\">Click to test</a>", c)
 	fmt.Fprintf(w, "<html><body>Your CSRF token is: %s<br>%s</body></html>", c, link)
 	return
 }
 
 func CsrfTest(w http.ResponseWriter, r *http.Request) {
-	c := csrf.GetCSRF(r)
-	c2 := r.FormValue("csrf")
-	if c != c2 {
+	if !csrf.ValidCSRF(r) {
 		fmt.Fprintf(w, "Invalid CSRF token")
 		return
 	}
 	fmt.Fprintf(w, "Successfull CSRF token match")
-
+	return
 }
