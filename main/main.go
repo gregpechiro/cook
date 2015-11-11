@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gregpechiro/cookieManager/cook"
+	"github.com/gregpechiro/cookieManager/csrf"
 	"github.com/gregpechiro/cookieManager/flash"
 	"github.com/gregpechiro/cookieManager/sess"
 )
@@ -32,6 +33,9 @@ func main() {
 	http.HandleFunc("/admin/put", AdminPut)
 	http.HandleFunc("/admin/all", AdminAll)
 
+	http.HandleFunc("/csrf", Csrf)
+	http.HandleFunc("/csrf-test", CsrfTest)
+
 	http.ListenAndServe(":8080", nil)
 
 }
@@ -45,6 +49,7 @@ func GetCook(w http.ResponseWriter, r *http.Request) {
 		val = cook.Get(r, r.FormValue("cook"))
 	}
 	fmt.Fprintf(w, "Cookie: %v", val)
+	return
 }
 
 func PutCook(w http.ResponseWriter, r *http.Request) {
@@ -59,16 +64,19 @@ func PutCook(w http.ResponseWriter, r *http.Request) {
 func DelCook(w http.ResponseWriter, r *http.Request) {
 	cook.Delete(w, r, r.FormValue("cook"))
 	http.Redirect(w, r, "/getall", 303)
+	return
 }
 
 func GetAllCook(w http.ResponseWriter, r *http.Request) {
 	c := cook.GetAll(r)
 	fmt.Fprintf(w, "Cookies:    %v", c)
+	return
 }
 
 func GetFlash(w http.ResponseWriter, r *http.Request) {
 	msgk, msgv := flash.GetFlash(w, r)
 	fmt.Fprintf(w, "Message in cookie: %s, %s", msgk, msgv)
+	return
 }
 
 func SetFlash(w http.ResponseWriter, r *http.Request) {
@@ -90,11 +98,13 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	}
 	sess.Login(w, r, role)
 	fmt.Fprintf(w, "You are now logged in")
+	return
 }
 
 func Logout(w http.ResponseWriter, r *http.Request) {
 	sess.Logout(w, r)
 	fmt.Fprintf(w, "You are now logged out")
+	return
 }
 
 func Secure(w http.ResponseWriter, r *http.Request) {
@@ -104,6 +114,7 @@ func Secure(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Fprintf(w, "You are now viewing secure data")
+	return
 }
 
 func SecurePut(w http.ResponseWriter, r *http.Request) {
@@ -128,6 +139,7 @@ func SecureAll(w http.ResponseWriter, r *http.Request) {
 	}
 	c := sess.GetAll(r)
 	fmt.Fprintf(w, "Session Cookies:    %v", c)
+	return
 }
 
 func Admin(w http.ResponseWriter, r *http.Request) {
@@ -138,6 +150,7 @@ func Admin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	fmt.Fprintf(w, "You are now viewing admin data")
+	return
 }
 
 func AdminPut(w http.ResponseWriter, r *http.Request) {
@@ -162,4 +175,23 @@ func AdminAll(w http.ResponseWriter, r *http.Request) {
 	}
 	c := sess.GetAll(r)
 	fmt.Fprintf(w, "Session Cookies:    %v", c)
+	return
+}
+
+func Csrf(w http.ResponseWriter, r *http.Request) {
+	c := csrf.SetCSRF(w)
+	link := fmt.Sprintf("<a href=\"/csrf-test?csrf=%s\">Click to test</a>", c)
+	fmt.Fprintf(w, "<html><body>Your CSRF token is: %s<br>%s</body></html>", c, link)
+	return
+}
+
+func CsrfTest(w http.ResponseWriter, r *http.Request) {
+	c := csrf.GetCSRF(r)
+	c2 := r.FormValue("csrf")
+	if c != c2 {
+		fmt.Fprintf(w, "Invalid CSRF token")
+		return
+	}
+	fmt.Fprintf(w, "Successfull CSRF token match")
+
 }
